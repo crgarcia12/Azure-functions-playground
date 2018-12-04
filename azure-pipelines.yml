@@ -1,0 +1,18 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+steps:
+- script: |
+    sed -i -e 's#storageKey#$(StorageKey)#g' $(Build.Repository.LocalPath)/local.settings.json
+    sed -i -e 's#StorageEndpoint#$(StorageEndpoint)#g' $(Build.Repository.LocalPath)/local.settings.json
+  displayName: 'Edit storage key secret'
+
+- script: |
+    echo pwd
+    func extensions sync
+    python3.6 -m venv env
+    source env/bin/activate
+    sudo func azure functionapp publish Funcpyqueue2app  --build-native-deps
+  displayName: 'Publish azure function'

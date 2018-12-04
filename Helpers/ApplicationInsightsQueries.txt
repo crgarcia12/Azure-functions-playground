@@ -1,0 +1,49 @@
+// Time to process
+// Number of different nodes
+// Count of jobs
+traces
+| where timestamp > ago(1h) 
+| extend parsedMessage = parse_json(message)
+| where parsedMessage.version == '13'
+| where parsedMessage.type == 'queue' 
+| project 
+    timestamp, 
+    durationSeconds = tostring(parsedMessage.durationSeconds), 
+    insertionTime = todatetime(parsedMessage.insertionTime), 
+    startTime = todatetime(parsedMessage.start), 
+    worker = tostring(parsedMessage.worker),
+    queuedMessages = toint(parsedMessage.queuedMessages)
+| extend TimeToStartProcessingInSeconds = datetime_diff('Second',startTime,insertionTime)
+| summarize 
+    //timeToProcessInSeconds = avg(TimeToStartProcessingInSeconds),
+    workers = dcount(worker)
+    ,processedMessages = count()
+    ,queuedMessages = max(queuedMessages)
+by bin(timestamp, 1m)
+| render timechart 
+
+//
+// New workers per minute
+//
+traces 
+| where timestamp > ago(1h) 
+| extend parsedMessage = parse_json(message)
+| where parsedMessage.version == '13'
+| where parsedMessage.type == 'queue'
+| summarize firstAppearance = min(timestamp) by tostring(parsedMessage.worker)
+| summarize numberOfNewWorkers = count() by bin(firstAppearance, 1m)
+| sort by firstAppearance asc
+| render timechart 
+
+//
+// Number of workers
+// 
+traces 
+| where timestamp > ago(1h) 
+| extend parsedMessage = parse_json(message)
+| where parsedMessage.version == '13'
+| where parsedMessage.type == 'queue'
+| summarize numberOfWorkers = dcount(tostring(parsedMessage.worker)) by bin(timestamp, 1m)
+| sort by timestamp asc
+| render timechart 
+
